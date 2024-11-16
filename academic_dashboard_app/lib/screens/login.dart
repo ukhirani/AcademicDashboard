@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'forgot_password.dart'; // Import ForgotPasswordPage
 import 'hod_home.dart'; // HOD home screen
 import 'cc_home.dart'; // CC home screen
-import 'register.dart'; // Registration page
+import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -14,7 +15,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   void _login() async {
     try {
@@ -26,9 +26,9 @@ class _LoginPageState extends State<LoginPage> {
       final String uid = userCredential.user!.uid;
 
       // Fetch user role from Firestore
-      final DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(uid).get();
-      final String role = userDoc['role'];
+      final DocumentSnapshot<Map<String, dynamic>> userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final String role = userDoc.data()?['role'] ?? 'Unknown';
 
       // Navigate to the respective home page
       if (role == 'HOD') {
@@ -39,8 +39,9 @@ class _LoginPageState extends State<LoginPage> {
             context, MaterialPageRoute(builder: (context) => CcHomePage()));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Invalid email or password')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid email or password')),
+      );
     }
   }
 
@@ -57,12 +58,14 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               Icon(Icons.school, color: Colors.blue, size: 60.0),
               SizedBox(height: 16.0),
-              Text('ACADEMIC DASHBOARD',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.blue,
-                      fontSize: 20.0,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                'ACADEMIC DASHBOARD',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 20.0,
+                    fontWeight: FontWeight.bold),
+              ),
               SizedBox(height: 32.0),
               TextField(
                 controller: emailController,
@@ -95,11 +98,19 @@ class _LoginPageState extends State<LoginPage> {
               SizedBox(height: 16.0),
               GestureDetector(
                 onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => RegisterPage()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ForgotPasswordPage()),
+                  );
                 },
-                child: Text('Don’t have an account? Register here',
-                    textAlign: TextAlign.center),
+                child: Center(
+                  child: Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                        color: Colors.blue, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ],
           ),
