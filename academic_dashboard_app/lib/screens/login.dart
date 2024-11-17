@@ -16,10 +16,10 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
   List<String> userRoles = [];
   String? selectedRole;
+  String? userName;
 
   @override
   void dispose() {
-    // Dispose controllers when the widget is disposed
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -41,8 +41,9 @@ class _LoginPageState extends State<LoginPage> {
 
       if (userDoc.exists) {
         userRoles = List<String>.from(userDoc['roles'] ?? []);
+        userName = userDoc['userName']; // Correct field name
         if (userRoles.isNotEmpty) {
-          if (!mounted) return; // Ensure the widget is still mounted
+          if (!mounted) return;
           setState(() {
             selectedRole = userRoles.first;
           });
@@ -53,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
         }
       } else {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('User roles not found.')));
+            .showSnackBar(SnackBar(content: Text('User not found.')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -61,23 +62,22 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _navigateToRolePage() {
+  void _navigateToRolePage() async {
     if (selectedRole == null) return;
 
     Widget nextPage;
-
     switch (selectedRole) {
       case 'Admin':
-        nextPage = AdminPage(roles: userRoles, onRoleSwitch: _onRoleSwitch);
+        nextPage = AdminPage(roles: userRoles);
         break;
       case 'Class Coordinator':
-        nextPage = CCPage(roles: userRoles, onRoleSwitch: _onRoleSwitch);
+        nextPage = CCPage(roles: userRoles);
         break;
       case 'Faculty':
-        nextPage = FacultyPage(roles: userRoles, onRoleSwitch: _onRoleSwitch);
+        nextPage = FacultyPage(facultyName: userName!); // Pass faculty name
         break;
       case 'Head Of Department':
-        nextPage = HODPage(roles: userRoles, onRoleSwitch: _onRoleSwitch);
+        nextPage = HODPage(roles: userRoles);
         break;
       default:
         ScaffoldMessenger.of(context)
@@ -89,14 +89,6 @@ class _LoginPageState extends State<LoginPage> {
       context,
       MaterialPageRoute(builder: (context) => nextPage),
     );
-  }
-
-  void _onRoleSwitch(String newRole) {
-    if (!mounted) return; // Ensure the widget is still mounted
-    setState(() {
-      selectedRole = newRole;
-    });
-    _navigateToRolePage();
   }
 
   @override

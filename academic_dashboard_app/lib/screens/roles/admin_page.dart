@@ -4,9 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminPage extends StatefulWidget {
   final List<String> roles;
-  final Function(String) onRoleSwitch;
 
-  AdminPage({required this.roles, required this.onRoleSwitch});
+  AdminPage({required this.roles});
 
   @override
   _AdminPageState createState() => _AdminPageState();
@@ -44,7 +43,6 @@ class _AdminPageState extends State<AdminPage> {
           .get();
 
       if (userSnapshot.docs.isNotEmpty) {
-        // User exists, update roles
         var userDoc = userSnapshot.docs.first;
         String uid = userDoc['UID'];
         List<dynamic> roles = userDoc['roles'];
@@ -64,7 +62,6 @@ class _AdminPageState extends State<AdminPage> {
           );
         }
       } else {
-        // New user creation
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
                 email: email, password: "defaultPassword123");
