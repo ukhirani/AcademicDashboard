@@ -224,7 +224,10 @@ class _CCPageState extends State<CCPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Class Coordinator Page'),
+        title: Text(
+          'Logged in as: ${FirebaseAuth.instance.currentUser?.displayName ?? 'Class Coordinator'}',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

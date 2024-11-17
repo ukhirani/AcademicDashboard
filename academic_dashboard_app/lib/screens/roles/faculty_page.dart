@@ -42,49 +42,71 @@ class _FacultyPageState extends State<FacultyPage> {
       appBar: AppBar(
         title: Text('Faculty Page'),
       ),
-      body: FutureBuilder<List<QueryDocumentSnapshot>>(
-        future: filteredSubjectsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Heading for the Faculty Name
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Logged in as: ${widget.facultyName}',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<QueryDocumentSnapshot>>(
+              future: filteredSubjectsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('No subjects found for this faculty.'));
-          }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                      child: Text('No subjects found for this faculty.'));
+                }
 
-          var filteredSubjects = snapshot.data!;
+                var filteredSubjects = snapshot.data!;
 
-          return ListView.builder(
-            itemCount: filteredSubjects.length,
-            itemBuilder: (context, index) {
-              var subject = filteredSubjects[index];
-              var subjectId = subject.id;
-              var subjectName = subject['subject_name'] ?? 'No name provided';
-              var semester = subject['semester'] ?? 'No semester specified';
+                return ListView.builder(
+                  itemCount: filteredSubjects.length,
+                  itemBuilder: (context, index) {
+                    var subject = filteredSubjects[index];
+                    var subjectId = subject.id;
+                    var subjectName =
+                        subject['subject_name'] ?? 'No name provided';
+                    var semester =
+                        subject['semester'] ?? 'No semester specified';
 
-              return ListTile(
-                title: Text(subjectName),
-                subtitle: Text('Semester: $semester'),
-                trailing: Icon(Icons.arrow_forward),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FacultySubjectDetailsPage(
-                        subjectId: subjectId,
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        },
+                    return ListTile(
+                      title: Text(subjectName),
+                      subtitle: Text('Semester: $semester'),
+                      trailing: Icon(Icons.arrow_forward),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FacultySubjectDetailsPage(
+                              subjectId: subjectId,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
