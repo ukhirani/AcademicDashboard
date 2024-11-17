@@ -11,212 +11,124 @@ class HODPage extends StatefulWidget {
 }
 
 class _HODPageState extends State<HODPage> {
-  late Future<List<Map<String, dynamic>>> subjectDetailsFuture;
-  late Future<List<Map<String, dynamic>>> facultyDetailsFuture;
-  late Future<List<Map<String, dynamic>>> ccDetailsFuture;
+  List<QueryDocumentSnapshot> facultyList = [];
+  List<QueryDocumentSnapshot> ccList = [];
+  List<QueryDocumentSnapshot> subjects = [];
 
   @override
   void initState() {
     super.initState();
-    subjectDetailsFuture = _fetchSubjectDetails();
-    facultyDetailsFuture = _fetchFacultyDetails();
-    ccDetailsFuture = _fetchCCDetails();
+    _fetchData();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchSubjectDetails() async {
-    var snapshot =
-        await FirebaseFirestore.instance.collection('subjects').get();
-    var subjects = snapshot.docs.map((doc) {
-      var data = doc.data();
-      var fieldsTotal = data.length;
-      var fieldsCompleted = data.values.where((value) => value != null).length;
-      return {
-        'subjectName': data['subject_name'] ?? 'No name',
-        'semester': data['semester'] ?? 'No semester',
-        'fieldsCompleted': fieldsCompleted,
-        'fieldsTotal': fieldsTotal,
-      };
-    }).toList();
-    return subjects;
+  Future<void> _fetchData() async {
+    try {
+      // Fetch all faculty members
+      var facultySnapshot = await FirebaseFirestore.instance
+          .collection('user_collection')
+          .where('roles', arrayContains: 'Faculty')
+          .get();
+      facultyList = facultySnapshot.docs;
+
+      // Fetch all class coordinators
+      var ccSnapshot = await FirebaseFirestore.instance
+          .collection('user_collection')
+          .where('roles', arrayContains: 'Class Coordinator')
+          .get();
+      ccList = ccSnapshot.docs;
+
+      // Fetch all subjects
+      var subjectsSnapshot =
+          await FirebaseFirestore.instance.collection('subjects').get();
+      subjects = subjectsSnapshot.docs;
+
+      setState(() {});
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching data: $e')),
+      );
+    }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchFacultyDetails() async {
-    var snapshot = await FirebaseFirestore.instance
-        .collection('user_collection')
-        .where('roles', arrayContains: 'Faculty')
-        .get();
-    return snapshot.docs.map((doc) {
-      var data = doc.data();
-      return {
-        'facultyName': data['userName'] ?? 'No name',
-        'assignedSubjects': _getAssignedSubjects(data['faculty_list'] ?? []),
-      };
-    }).toList();
+  int _getCompletedFieldsCount(Map<String, dynamic> subjectData) {
+    return subjectData.entries
+        .where((entry) => entry.value != null)
+        .length; // Counts non-null fields
   }
 
-  Future<List<Map<String, dynamic>>> _fetchCCDetails() async {
-    var snapshot = await FirebaseFirestore.instance
-        .collection('user_collection')
-        .where('roles', arrayContains: 'CC')
-        .get();
-    return snapshot.docs.map((doc) {
-      var data = doc.data();
-      return {
-        'ccName': data['userName'] ?? 'No name',
-        'assignedSubjects': _getAssignedSubjects(data['faculty_list'] ?? []),
-      };
+  List<QueryDocumentSnapshot> _getFacultySubjects(String facultyName) {
+    return subjects.where((subject) {
+      var facultyList = subject['faculty_list'] != null
+          ? List<String>.from(subject['faculty_list'])
+          : [];
+      return facultyList.contains(facultyName);
     }).toList();
   }
 
-  List<String> _getAssignedSubjects(List<dynamic> facultyList) {
-    // Logic to extract assigned subjects
-    return facultyList.map((subject) => subject.toString()).toList();
+  List<QueryDocumentSnapshot> _getCCSubjects(String ccId) {
+    return subjects.where((subject) => subject['cc_id'] == ccId).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('HOD Dashboard'),
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.indigo,
+        title: Text('HOD Page'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionTitle('Subjects'),
-              _buildSubjectList(),
-              const SizedBox(height: 16),
-              _buildSectionTitle('Faculty Details'),
-              _buildFacultyList(),
-              const SizedBox(height: 16),
-              _buildSectionTitle('CC Details'),
-              _buildCCList(),
-            ],
-          ),
+        child: ListView(
+          children: [
+            Text(
+              'Faculty and Their Assigned Subjects:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            ...facultyList.map((faculty) {
+              var assignedSubjects = _getFacultySubjects(faculty['userName']);
+              return ExpansionTile(
+                title: Text(faculty['userName']),
+                subtitle: Text(
+                    'Subjects: ${assignedSubjects.length} assigned subjects'),
+                children: assignedSubjects.map((subject) {
+                  var subjectData = subject.data() as Map<String, dynamic>;
+                  var completedFieldsCount =
+                      _getCompletedFieldsCount(subjectData);
+                  var totalFieldsCount = subjectData.length;
+                  return ListTile(
+                    title: Text(subjectData['subject_name'] ?? 'No Name'),
+                    subtitle: Text(
+                        'Completed Fields: $completedFieldsCount/$totalFieldsCount'),
+                  );
+                }).toList(),
+              );
+            }).toList(),
+            SizedBox(height: 16),
+            Text(
+              'Class Coordinators and Their Assigned Subjects:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            ...ccList.map((cc) {
+              var assignedSubjects = _getCCSubjects(cc.id);
+              return ExpansionTile(
+                title: Text(cc['userName']),
+                subtitle: Text(
+                    'Subjects: ${assignedSubjects.length} assigned subjects'),
+                children: assignedSubjects.map((subject) {
+                  var subjectData = subject.data() as Map<String, dynamic>;
+                  var completedFieldsCount =
+                      _getCompletedFieldsCount(subjectData);
+                  var totalFieldsCount = subjectData.length;
+                  return ListTile(
+                    title: Text(subjectData['subject_name'] ?? 'No Name'),
+                    subtitle: Text(
+                        'Completed Fields: $completedFieldsCount/$totalFieldsCount'),
+                  );
+                }).toList(),
+              );
+            }).toList(),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        color: Colors.indigo,
-      ),
-    );
-  }
-
-  Widget _buildSubjectList() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: subjectDetailsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text('No subjects found.'));
-        }
-        var subjects = snapshot.data!;
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: subjects.length,
-          itemBuilder: (context, index) {
-            var subject = subjects[index];
-            return Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ListTile(
-                title: Text(subject['subjectName']),
-                subtitle: Text(
-                  'Semester: ${subject['semester']}\n'
-                  'Fields Completed: ${subject['fieldsCompleted']} / ${subject['fieldsTotal']}',
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildFacultyList() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: facultyDetailsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text('No faculty details found.'));
-        }
-        var facultyDetails = snapshot.data!;
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: facultyDetails.length,
-          itemBuilder: (context, index) {
-            var faculty = facultyDetails[index];
-            return Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ListTile(
-                title: Text(faculty['facultyName']),
-                subtitle: Text(
-                    'Assigned Subjects: ${faculty['assignedSubjects'].join(', ')}'),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildCCList() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: ccDetailsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text('No CC details found.'));
-        }
-        var ccDetails = snapshot.data!;
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: ccDetails.length,
-          itemBuilder: (context, index) {
-            var cc = ccDetails[index];
-            return Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ListTile(
-                title: Text(cc['ccName']),
-                subtitle: Text(
-                    'Assigned Subjects: ${cc['assignedSubjects'].join(', ')}'),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }
