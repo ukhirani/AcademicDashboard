@@ -5,6 +5,7 @@ import 'roles/admin_page.dart';
 import 'roles/cc_page.dart';
 import 'roles/faculty_page.dart';
 import 'roles/hod_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -19,10 +20,31 @@ class _LoginPageState extends State<LoginPage> {
   String? userName;
 
   @override
+  void initState() {
+    super.initState();
+    _checkLoginState();
+  }
+
+  @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  void _checkLoginState() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    String? userRole = prefs.getString('userRole');
+    String? userName = prefs.getString('userName');
+
+    if (isLoggedIn && userRole != null && userName != null) {
+      setState(() {
+        selectedRole = userRole;
+        this.userName = userName;
+      });
+      _navigateToRolePage();
+    }
   }
 
   void _login() async {
@@ -41,12 +63,19 @@ class _LoginPageState extends State<LoginPage> {
 
       if (userDoc.exists) {
         userRoles = List<String>.from(userDoc['roles'] ?? []);
-        userName = userDoc['userName']; // Correct field name
+        userName = userDoc['userName'];
+
         if (userRoles.isNotEmpty) {
           if (!mounted) return;
           setState(() {
             selectedRole = userRoles.first;
           });
+
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+          await prefs.setString('userRole', selectedRole!);
+          await prefs.setString('userName', userName!);
+
           _navigateToRolePage();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -74,7 +103,7 @@ class _LoginPageState extends State<LoginPage> {
         nextPage = CCPage(roles: userRoles);
         break;
       case 'Faculty':
-        nextPage = FacultyPage(facultyName: userName!); // Pass faculty name
+        nextPage = FacultyPage(facultyName: userName!);
         break;
       case 'Head Of Department':
         nextPage = HODPage(roles: userRoles);
@@ -88,6 +117,15 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => nextPage),
+    );
+  }
+
+  void _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
     );
   }
 

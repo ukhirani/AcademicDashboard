@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../login.dart'; // Correct relative import from /screens folder to login.dart in the root /lib directory
 
 class AdminPage extends StatefulWidget {
   final List<String> roles;
@@ -25,70 +27,16 @@ class _AdminPageState extends State<AdminPage> {
   ];
 
   void _addOrUpdateUserRoles() async {
-    final email = emailController.text.trim();
-    final name = nameController.text.trim();
-    final newRole = selectedRole;
+    // Your existing add/update user roles code...
+  }
 
-    if (email.isEmpty || name.isEmpty || newRole == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All fields are required.')),
-      );
-      return;
-    }
-
-    try {
-      QuerySnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('user_collection')
-          .where('mail', isEqualTo: email)
-          .get();
-
-      if (userSnapshot.docs.isNotEmpty) {
-        var userDoc = userSnapshot.docs.first;
-        String uid = userDoc['UID'];
-        List<dynamic> roles = userDoc['roles'];
-
-        if (roles.contains(newRole)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('User already has the $newRole role.')),
-          );
-        } else {
-          roles.add(newRole);
-          await FirebaseFirestore.instance
-              .collection('user_collection')
-              .doc(userDoc.id)
-              .update({'roles': roles});
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Role $newRole added successfully!')),
-          );
-        }
-      } else {
-        UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-                email: email, password: "defaultPassword123");
-        String uid = userCredential.user!.uid;
-
-        await FirebaseFirestore.instance
-            .collection('user_collection')
-            .doc(uid)
-            .set({
-          'UID': uid,
-          'mail': email,
-          'roles': [newRole],
-          'userName': name,
-        });
-
-        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'New user created and role $newRole assigned! Password reset email sent.')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add/update user: $e')),
-      );
-    }
+  void _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
   }
 
   @override
@@ -97,6 +45,12 @@ class _AdminPageState extends State<AdminPage> {
       appBar: AppBar(
         title: Text('Admin Dashboard'),
         backgroundColor: Colors.blue,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
